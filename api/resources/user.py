@@ -1,46 +1,21 @@
 from api import Resource, abort, reqparse, auth
 from api.models.user import UserModel
-from api.schemas.user import user_schema, users_schema
+from api.schemas.user import user_schema, users_schema, UserSchema, UserRequestSchema
+from flask_apispec.views import MethodResource
+from flask_apispec import marshal_with, use_kwargs, doc
 
 
-class UserResource(Resource):
+@doc(tags=['Users'])
+class UserResource(MethodResource):
+    @doc(description="Получить пользователя по id")
+    @doc(summary="Get User by id")
+    @marshal_with(UserSchema, code=200)
     def get(self, user_id):
-        # language=YAML
-        """
-        Get User by id
-        ---
-        tags:
-            - Users
-        parameters:
-              - in: path
-                name: user_id
-                type: integer
-                required: true
-                default: 1
-        responses:
-            200:
-                description: A single user item
-                schema:
-                    id: User
-                    properties:
-                        id:
-                            type: integer
-                            description: user id
-                            default: 1
-                        username:
-                            type: string
-                            description: The name of the user
-                            default: Steven Wilson
-                        is_staff:
-                            type: boolean
-                            description: user is staff
-                            default: false
-        """
-
         user = UserModel.query.get(user_id)
-        if user:
-            abort(403, error=f"User with id={user_id} not found")
-        return user_schema.dump(user), 200
+        # if user is None:
+        if not user:
+            abort(404, error=f"User with id={user_id} not found")
+        return user, 200
 
     @auth.login_required(role="admin")
     def put(self, user_id):
@@ -57,18 +32,18 @@ class UserResource(Resource):
         raise NotImplemented  # не реализовано!
 
 
-class UsersListResource(Resource):
+@doc(tags=['Users'])
+class UsersListResource(MethodResource):
     def get(self):
         users = UserModel.query.all()
         return users_schema.dump(users), 200
 
-    def post(self):
-        parser = reqparse.RequestParser()
-        parser.add_argument("username", required=True)
-        parser.add_argument("password", required=True)
-        user_data = parser.parse_args()
-        user = UserModel(**user_data)
+    @doc(summary="Create new User")
+    @marshal_with(UserSchema, code=201)
+    @use_kwargs(UserRequestSchema, location=('json'))
+    def post(self, **kwargs):
+        user = UserModel(**kwargs)
         user.save()
         if not user.id:
             abort(400, error=f"User with username:{user.username} already exist")
-        return user_schema.dump(user), 201
+        return user, 201
