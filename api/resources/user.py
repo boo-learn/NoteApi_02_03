@@ -19,8 +19,7 @@ class UserResource(MethodResource):
             abort(404, error=f"User with id={user_id} not found")
         return user, 200
 
-    # @auth.login_required(role="admin")
-    @auth.login_required
+    @auth.login_required(role="admin")
     @doc(security=[{"basicAuth": []}])
     @doc(summary="Edit User")
     @marshal_with(UserSchema, code=200)
@@ -41,6 +40,10 @@ class UsersListResource(MethodResource):
     def get(self):
         users = UserModel.query.all()
         return users_schema.dump(users), 200
+
+    # 1. Request Body (json, xml, string, ...) location=('json')
+    # 2. Query param (localhost:PORT/ulr_source?name=Ivan&age=24 location=('query')
+    # 3. Path (localhost:PORT/url/<param>)
 
     @doc(summary="Create new User")
     @marshal_with(UserSchema, code=201)
