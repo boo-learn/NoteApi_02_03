@@ -18,5 +18,11 @@ class NoteSchema(ma.SQLAlchemySchema):
     tags = ma.Nested(TagSchema(many=True))
 
 
+class NoteRequestSchema(ma.SQLAlchemyAutoSchema):
+    class Meta:
+        model = NoteModel
+        exclude = ("id", "author_id")
+
+
 note_schema = NoteSchema()
 notes_schema = NoteSchema(many=True)

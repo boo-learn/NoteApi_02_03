@@ -1,10 +1,17 @@
 from api import auth, abort, g, Resource, reqparse
 from api.models.note import NoteModel
-from api.schemas.note import note_schema, notes_schema
+from api.schemas.note import NoteSchema, NoteRequestSchema
+from flask_apispec import marshal_with, use_kwargs, doc
+from flask_apispec.views import MethodResource
+from webargs import fields
+from api.models.tag import TagModel
 
 
-class NoteResource(Resource):
+@doc(tags=['Notes'])
+class NoteResource(MethodResource):
+    @doc(security=[{"basicAuth": []}])
     @auth.login_required
+    @marshal_with(NoteSchema)
     def get(self, note_id):
         """
         Пользователь может получить ТОЛЬКО свою заметку
@@ -13,7 +20,7 @@ class NoteResource(Resource):
         note = NoteModel.query.get(note_id)
         if not note:
             abort(404, error=f"Note with id={note_id} not found")
-        return note_schema.dump(note), 200
+        return note, 200
 
     @auth.login_required
     def put(self, note_id):
@@ -45,20 +52,37 @@ class NoteResource(Resource):
         return note_dict, 200
 
 
-class NotesListResource(Resource):
+@doc(tags=['Notes'])
+class NotesListResource(MethodResource):
+    @marshal_with(NoteSchema(many=True))
     def get(self):
         notes = NoteModel.query.all()
-        return notes_schema.dump(notes), 200
+        return notes, 200
 
+    @doc(security=[{"basicAuth": []}])
     @auth.login_required
-    def post(self):
+    @marshal_with(NoteSchema, code=201)
+    @use_kwargs(NoteRequestSchema, location="json")
+    def post(self, **kwargs):
         author = g.user
-        parser = reqparse.RequestParser()
-        parser.add_argument("text", required=True)
-        # Подсказка: чтобы разобраться с private="False",
-        #   смотрите тут: https://flask-restful.readthedocs.io/en/latest/reqparse.html#request-parsing
-        parser.add_argument("private", type=bool, required=True)
-        note_data = parser.parse_args()
-        note = NoteModel(author_id=author.id, **note_data)
+        note = NoteModel(author_id=author.id, **kwargs)
         note.save()
-        return note_schema.dump(note), 201
+        return note, 201
+
+# PUT: /notes/<note_id>/tags
+@doc(tags=['Notes'])
+class NoteSetTagsResource(MethodResource):
+    @doc(summary="Set tags to Note")
+    @use_kwargs({"tags": fields.List(fields.Int())}, location=('json'))
+    @marshal_with(NoteSchema)
+    def put(self, note_id, **kwargs):
+        note = NoteModel.query.get(note_id)
+        if not note:
+            abort(404, error=f"note {note_id} not found")
+        # print("note kwargs = ", kwargs)
+        for tag_id in kwargs["tags"]:
+            tag = TagModel.query.get(tag_id)
+            # TODO: добавить проверку существования тега
+            note.tags.append(tag)
+        note.save()
+        return note, 200

@@ -30,20 +30,3 @@ class TagsListResource(MethodResource):
             abort(400, error=f"Tag with name={tag.name} already exists")
         return tag, 201
 
-# PUT: /notes/<note_id>/tags
-@doc(tags=['Notes'])
-class NoteSetTagsResource(MethodResource):
-    @doc(summary="Set tags to Note")
-    @use_kwargs({"tags": fields.List(fields.Int())}, location=('json'))
-    @marshal_with(NoteSchema)
-    def put(self, note_id, **kwargs):
-        note = NoteModel.query.get(note_id)
-        if not note:
-            abort(404, error=f"note {note_id} not found")
-        # print("note kwargs = ", kwargs)
-        for tag_id in kwargs["tags"]:
-            tag = TagModel.query.get(tag_id)
-            # TODO: добавить проверку существования тега
-            note.tags.append(tag)
-        note.save()
-        return note, 200
