@@ -69,6 +69,7 @@ class NotesListResource(MethodResource):
         note.save()
         return note, 201
 
+
 # PUT: /notes/<note_id>/tags
 @doc(tags=['Notes'])
 class NoteSetTagsResource(MethodResource):
@@ -86,3 +87,14 @@ class NoteSetTagsResource(MethodResource):
             note.tags.append(tag)
         note.save()
         return note, 200
+
+
+# GET: /notes/filter?tags=[tag-1, tag-2, ...]
+@doc(tags=['Notes'])
+class NotesFilterResource(MethodResource):
+    @doc(summary="Get notes by filter")
+    @use_kwargs({"tags": fields.List(fields.Int())}, location="query")
+    @marshal_with(NoteSchema(many=True), code=200)
+    def get(self, **kwargs):
+        notes = NoteModel.query.join(NoteModel.tags).filter(TagModel.id.in_(kwargs["tags"])).all()
+        return notes
