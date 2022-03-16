@@ -5,6 +5,7 @@ from flask_apispec import marshal_with, use_kwargs, doc
 from flask_apispec.views import MethodResource
 from webargs import fields
 from api.models.tag import TagModel
+from helpers import shortcuts
 
 
 @doc(tags=['Notes'])
@@ -17,9 +18,7 @@ class NoteResource(MethodResource):
         Пользователь может получить ТОЛЬКО свою заметку
         """
         author = g.user
-        note = NoteModel.query.get(note_id)
-        if not note:
-            abort(404, error=f"Note with id={note_id} not found")
+        note = shortcuts.get_or_404(NoteModel, note_id)
         return note, 200
 
     @auth.login_required
@@ -44,12 +43,21 @@ class NoteResource(MethodResource):
         note.save()
         return note_schema.dump(note), 200
 
+    @doc(security=[{"basicAuth": []}])
+    @auth.login_required # 401
+    @doc(responses={"204": {"description": "Ok"}})
+    @doc(responses={"401": {"description": "Unauthorized"}})
+    @doc(responses={"403": {"description": "Forbidden"}})
     def delete(self, note_id):
         """
         Пользователь может удалять ТОЛЬКО свои заметки
         """
-        raise NotImplemented("Метод не реализован")
-        return note_dict, 200
+        author = g.user
+        note = shortcuts.get_or_404(NoteModel, note_id)
+        if note.author != author:
+            abort(403)
+        note.delete()
+        return "", 204
 
 
 @doc(tags=['Notes'])
