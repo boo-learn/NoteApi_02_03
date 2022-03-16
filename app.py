@@ -48,3 +48,5 @@ docs.register(note.NoteSetTagsResource)
 docs.register(note.NotesFilterResource)
 if __name__ == '__main__':
     app.run(debug=Config.DEBUG, port=Config.PORT)
+
+# PUT /notes/<id>/restore
