@@ -55,7 +55,7 @@ class NoteResource(MethodResource):
         author = g.user
         note = shortcuts.get_or_404(NoteModel, note_id)
         if note.author != author:
-            abort(403, error=_("Forbidden"))
+            abort(403)
         note.delete()
         return "", 204
 
